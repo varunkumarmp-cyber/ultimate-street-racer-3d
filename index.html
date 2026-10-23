@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ULTIMATE STREET RACER - 3D Racing Game</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Three.js: Local bundle with CDN fallback -->
+    <script src="lib/three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+        }
+    </script>
+</head>
+<body>
+    <!-- 3D WebGL Canvas Container -->
+    <div id="game-container"></div>
+
+    <!-- HUD System -->
+    <div id="hud-container">
+        <!-- Asphalt Nitro Speed Vignette & Blur Lines -->
+        <div id="nitro-speed-vignette"></div>
+
+        <!-- Top Info Bar -->
+        <div class="hud-top-bar">
+            <!-- Position Badge -->
+            <div class="hud-panel hud-pos-panel">
+                <span class="hud-label">POSITION</span>
+                <div class="hud-value" id="hud-pos-val">1<span class="pos-suffix">ST</span> <span class="pos-total">/ 6</span></div>
+            </div>
+
+            <!-- Lap Badge -->
+            <div class="hud-panel hud-lap-panel">
+                <span class="hud-label">LAP</span>
+                <div class="hud-value" id="hud-lap-val">1 / 3</div>
+            </div>
+
+            <!-- Race Timer & Best Lap -->
+            <div class="hud-panel hud-time-panel">
+                <span class="hud-label">TIME</span>
+                <div class="hud-value hud-time-val" id="hud-time-val">00:00.00</div>
+                <div class="hud-best-row">
+                    <span class="hud-best-label">BEST</span>
+                    <span class="hud-best-val" id="hud-best-val">--:--.--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2D Minimap Frame -->
+        <div class="hud-minimap-container">
+            <canvas id="minimap-canvas" width="140" height="140"></canvas>
+        </div>
+
+        <!-- Quick Action Buttons -->
+        <div class="hud-quick-actions">
+            <button class="hud-btn" id="hud-camera-btn" title="Switch Camera (C)">🎥 CAM (C)</button>
+            <button class="hud-btn" id="hud-reset-btn" title="Reset Car to Track (R)">🔄 RESET (R)</button>
+            <button class="hud-btn" id="hud-pause-btn" title="Pause Game (ESC)">⏸️ PAUSE (ESC)</button>
+        </div>
+
+        <!-- Wrong Way Warning -->
+        <div id="hud-wrong-way">⚠️ WRONG WAY!</div>
+
+        <!-- Bottom Speedometer & Nitro -->
+        <div class="hud-bottom-bar">
+            <!-- Speedometer Gauge -->
+            <div class="speedometer-gauge">
+                <div class="tach-track"></div>
+                <div class="tach-needle-container">
+                    <div id="tach-needle"></div>
+                </div>
+                <div class="tach-center-pin"></div>
+
+                <div class="gear-badge">
+                    <span class="gear-label">GEAR</span>
+                    <span id="hud-gear-val">N</span>
+                </div>
+
+                <div class="speed-digital">
+                    <span id="hud-speed-val">0</span>
+                    <span class="speed-unit">KM/H</span>
+                </div>
+            </div>
+
+            <!-- Nitro Bar -->
+            <div class="nitro-container">
+                <div class="nitro-label-row">
+                    <span>NITRO BOOST</span>
+                    <span>SHIFT</span>
+                </div>
+                <div class="nitro-bar-track">
+                    <div id="hud-nitro-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Countdown Sequence Overlay -->
+    <div id="countdown-overlay">
+        <div id="countdown-text" class="countdown-num">3</div>
+    </div>
+
+    <!-- =====================================================================
+         MODAL SCREENS & MENUS
+         ===================================================================== -->
+
+    <!-- Main Menu Screen -->
+    <div class="screen-modal active" id="screen-main-menu">
+        <div class="menu-card">
+            <div>
+                <h1 class="game-title">ULTIMATE STREET RACER</h1>
+                <p class="game-subtitle">Next-Gen 3D Arcade Racing</p>
+            </div>
+
+            <div class="menu-actions">
+                <button class="menu-btn primary-action" id="btn-main-play">🏁 PLAY RACE</button>
+                <button class="menu-btn" id="btn-main-cars">🏎️ CAR SELECT</button>
+                <button class="menu-btn" id="btn-main-customize" style="border-color: var(--primary); color: var(--primary);">🎨 CUSTOMIZE CAR</button>
+                <button class="menu-btn" id="btn-main-tracks">🛣️ TRACK SELECT</button>
+                <button class="menu-btn" id="btn-main-settings">⚙️ SETTINGS</button>
+            </div>
+
+            <div class="controls-hint-box">
+                <div><span class="key-badge">W / ↑</span> Accelerate &nbsp;|&nbsp; <span class="key-badge">S / ↓</span> Brake / Reverse &nbsp;|&nbsp; <span class="key-badge">A / D / ← / →</span> Steer</div>
+                <div style="margin-top: 4px;"><span class="key-badge">SPACE</span> Drift &nbsp;|&nbsp; <span class="key-badge">SHIFT</span> Nitro &nbsp;|&nbsp; <span class="key-badge">C</span> Camera &nbsp;|&nbsp; <span class="key-badge">R</span> Reset &nbsp;|&nbsp; <span class="key-badge">ESC</span> Pause</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Car Select Screen -->
+    <div class="screen-modal" id="screen-car-select">
+        <div class="menu-card" style="max-width: 820px;">
+            <h2 class="game-title" style="font-size: 34px;">CHOOSE YOUR MACHINE</h2>
+
+            <div class="cards-grid">
+                <!-- Car 1: Apex GT -->
+                <div class="select-card car-card selected" data-car="apex_gt">
+                    <div class="card-title">APEX GT</div>
+                    <div class="card-subtitle">Balanced Sports Coupe</div>
+                    <div class="stat-bars">
+                        <div class="stat-row"><span>TOP SPEED</span><span>165 KM/H (NITRO 206)</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 78%;"></div></div>
+                        <div class="stat-row"><span>ACCELERATION</span><span>8.5 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 85%;"></div></div>
+                        <div class="stat-row"><span>HANDLING</span><span>8.8 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 88%;"></div></div>
+                        <div class="stat-row"><span>DRIFT CONTROL</span><span>9.2 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 92%;"></div></div>
+                    </div>
+                </div>
+
+                <!-- Car 2: Viper V8 -->
+                <div class="select-card car-card" data-car="viper_v8">
+                    <div class="card-title">VIPER V8</div>
+                    <div class="card-subtitle">American Muscle Power</div>
+                    <div class="stat-bars">
+                        <div class="stat-row"><span>TOP SPEED</span><span>178 KM/H (NITRO 228)</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 92%;"></div></div>
+                        <div class="stat-row"><span>ACCELERATION</span><span>8.0 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 80%;"></div></div>
+                        <div class="stat-row"><span>HANDLING</span><span>7.5 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 75%;"></div></div>
+                        <div class="stat-row"><span>DRIFT CONTROL</span><span>8.4 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 84%;"></div></div>
+                    </div>
+                </div>
+
+                <!-- Car 3: Phantom R -->
+                <div class="select-card car-card" data-car="phantom_r">
+                    <div class="card-title">PHANTOM R</div>
+                    <div class="card-subtitle">Precision Hypercar</div>
+                    <div class="stat-bars">
+                        <div class="stat-row"><span>TOP SPEED</span><span>170 KM/H (NITRO 210)</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 84%;"></div></div>
+                        <div class="stat-row"><span>ACCELERATION</span><span>9.4 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 94%;"></div></div>
+                        <div class="stat-row"><span>HANDLING</span><span>9.6 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 96%;"></div></div>
+                        <div class="stat-row"><span>DRIFT CONTROL</span><span>8.8 / 10</span></div>
+                        <div class="stat-bar-track"><div class="stat-bar-fill" style="width: 88%;"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 14px; width: 100%; max-width: 480px; justify-content: center;">
+                <button class="menu-btn primary-action" id="btn-car-customize" style="flex: 1;">🎨 CUSTOMIZE</button>
+                <button class="menu-btn" id="btn-car-back" style="flex: 1;">CONFIRM & BACK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Car Customization / Garage Screen -->
+    <div class="screen-modal" id="screen-customize">
+        <div class="menu-card customize-card" style="max-width: 860px; max-height: 88vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 8px;">
+                <h2 class="game-title" style="font-size: 28px; margin: 0;">GARAGE CUSTOMIZATION</h2>
+                <div class="garage-orbit-hint" style="font-size: 11px; color: var(--primary); font-weight: 700; background: rgba(0,245,212,0.12); padding: 4px 10px; border-radius: 6px;">🖱️ Drag background to rotate 360°</div>
+            </div>
+
+            <!-- Customization Category Tabs -->
+            <div class="customize-tabs">
+                <button class="custom-tab-btn active" data-tab="tab-paint">🎨 PAINT & BODY</button>
+                <button class="custom-tab-btn" data-tab="tab-wheels">🛞 WHEELS & RIMS</button>
+                <button class="custom-tab-btn" data-tab="tab-aero">✨ UNDERGLOW & AERO</button>
+                <button class="custom-tab-btn" data-tab="tab-tuning">⚡ TUNING</button>
+            </div>
+
+            <!-- TAB 1: PAINT & BODY -->
+            <div class="customize-tab-content active" id="tab-paint">
+                <!-- Body Paint -->
+                <div class="custom-section">
+                    <span class="custom-sec-title">BODY PAINT COLOR</span>
+                    <div class="color-swatches" id="swatches-paint">
+                        <button class="swatch-btn active" data-color="0xdd1122" style="background:#dd1122;" title="Crimson Red"></button>
+                        <button class="swatch-btn" data-color="0x00d2ff" style="background:#00d2ff;" title="Electric Cyan"></button>
+                        <button class="swatch-btn" data-color="0x18181a" style="background:#18181a;" title="Midnight Black"></button>
+                        <button class="swatch-btn" data-color="0x00f5d4" style="background:#00f5d4;" title="Neon Mint"></button>
+                        <button class="swatch-btn" data-color="0xff0055" style="background:#ff0055;" title="Acid Pink"></button>
+                        <button class="swatch-btn" data-color="0x7209b7" style="background:#7209b7;" title="Royal Violet"></button>
+                        <button class="swatch-btn" data-color="0xfee440" style="background:#fee440;" title="Solar Yellow"></button>
+                        <button class="swatch-btn" data-color="0xff6b35" style="background:#ff6b35;" title="Sunburst Orange"></button>
+                        <button class="swatch-btn" data-color="0xf8f9fa" style="background:#f8f9fa;" title="Pearl White"></button>
+                        <button class="swatch-btn" data-color="0x2ec4b6" style="background:#2ec4b6;" title="Emerald Green"></button>
+                    </div>
+                </div>
+
+                <!-- Paint Finish -->
+                <div class="custom-section">
+                    <span class="custom-sec-title">PAINT FINISH</span>
+                    <div class="option-pill-group" id="group-paint-finish">
+                        <button class="pill-btn active" data-finish="metallic">METALLIC GLOSS</button>
+                        <button class="pill-btn" data-finish="gloss">CLEAR GLOSS</button>
+                        <button class="pill-btn" data-finish="matte">SATIN MATTE</button>
+                    </div>
+                </div>
+
+                <!-- Racing Stripe Color -->
+                <div class="custom-section">
+                    <span class="custom-sec-title">RACING STRIPE</span>
+                    <div class="color-swatches" id="swatches-stripe">
+                        <button class="swatch-btn active" data-color="0xffffff" style="background:#ffffff;" title="White"></button>
+                        <button class="swatch-btn" data-color="0xffb703" style="background:#ffb703;" title="Gold"></button>
+                        <button class="swatch-btn" data-color="0x000000" style="background:#000000;" title="Black"></button>
+                        <button class="swatch-btn" data-color="0x00f5d4" style="background:#00f5d4;" title="Cyan"></button>
+                        <button class="swatch-btn" data-color="0xff0055" style="background:#ff0055;" title="Red"></button>
+                        <button class="swatch-btn" data-color="none" style="background:transparent; border:2px dashed #888;" title="No Stripe">✕</button>
+                    </div>
+                </div>
+
+                <!-- Window Tint -->
+                <div class="custom-section">
+                    <span class="custom-sec-title">WINDOW TINT</span>
+                    <div class="option-pill-group" id="group-window-tint">
+                        <button class="pill-btn active" data-tint="0x111625" data-opacity="0.85">DARK SMOKE</button>
+                        <button class="pill-btn" data-tint="0x003366" data-opacity="0.75">CHAMELEON BLUE</button>
+                        <button class="pill-btn" data-tint="0x443311" data-opacity="0.75">GOLD MIRROR</button>
+                        <button class="pill-btn" data-tint="0x333333" data-opacity="0.50">LIGHT TINT</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: WHEELS & RIMS -->
+            <div class="customize-tab-content" id="tab-wheels">
+                <!-- Rim Paint Color -->
+                <div class="custom-section">
+                    <span class="custom-sec-title">ALLOY RIM FINISH</span>
+                    <div class="color-swatches" id="swatches-rims">
+                        <button class="swatch-btn active" data-color="0xdddddd" style="background:#dddddd;" title="Chrome Silver"></button>
+                        <button class="swatch-btn" data-color="0x151515" style="background:#151515;" title="Satin Black"></button>
+                        <button class="swatch-btn" data-color="0xd4af37" style="background:#d4af37;" title="Gold Bronze"></button>
+                        <button class="swatch-btn" data-color="0x00f5d4" style="background:#00f5d4;" title="Electric Cyan"></button>
+                        <button class="swatch-btn" data-color="0xff0055" style="background:#ff0055;" title="Racing Red"></button>
+                        <button class="swatch-btn" data-color="0xffffff" style="background:#ffffff;" title="Pure White"></button>
+                    </div>
+                </div>
+
+                <!-- Brake Caliper Color -->
+                <div class="custom-section">
+                    <span class="custom-sec-title">BRAKE CALIPER COLOR</span>
+                    <div class="color-swatches" id="swatches-calipers">
+                        <button class="swatch-btn active" data-color="0xff0022" style="background:#ff0022;" title="Brembo Red"></button>
+                        <button class="swatch-btn" data-color="0xfee440" style="background:#fee440;" title="Acid Yellow"></button>
+                        <button class="swatch-btn" data-color="0x00f5d4" style="background:#00f5d4;" title="Cyan Neon"></button>
+                        <button class="swatch-btn" data-color="0xff7700" style="background:#ff7700;" title="Sport Orange"></button>
+                        <button class="swatch-btn" data-color="0x3a86ff" style="background:#3a86ff;" title="Cobalt Blue"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: AERO & UNDERGLOW -->
+            <div class="customize-tab-content" id="tab-aero">
+                <!-- Underglow Neon -->
+                <div class="custom-section">
+                    <span class="custom-sec-title">NEON UNDERGLOW</span>
+                    <div class="color-swatches" id="swatches-underglow">
+                        <button class="swatch-btn active" data-color="off" style="background:#222; font-size:10px; font-weight:bold;">OFF</button>
+                        <button class="swatch-btn" data-color="0x00f5d4" style="background:#00f5d4; box-shadow:0 0 10px #00f5d4;" title="Cyan Neon"></button>
+                        <button class="swatch-btn" data-color="0xff007f" style="background:#ff007f; box-shadow:0 0 10px #ff007f;" title="Hot Magenta"></button>
+                        <button class="swatch-btn" data-color="0x39ff14" style="background:#39ff14; box-shadow:0 0 10px #39ff14;" title="Acid Green"></button>
+                        <button class="swatch-btn" data-color="0x9d4edd" style="background:#9d4edd; box-shadow:0 0 10px #9d4edd;" title="Electric Purple"></button>
+                        <button class="swatch-btn" data-color="0xff2a2a" style="background:#ff2a2a; box-shadow:0 0 10px #ff2a2a;" title="Devil Red"></button>
+                        <button class="swatch-btn" data-color="0x00b4d8" style="background:#00b4d8; box-shadow:0 0 10px #00b4d8;" title="Deep Blue"></button>
+                        <button class="swatch-btn" data-color="0xffea00" style="background:#ffea00; box-shadow:0 0 10px #ffea00;" title="Solar Gold"></button>
+                    </div>
+                </div>
+
+                <!-- Rear Spoiler Style -->
+                <div class="custom-section">
+                    <span class="custom-sec-title">REAR SPOILER AERO</span>
+                    <div class="option-pill-group" id="group-spoiler">
+                        <button class="pill-btn active" data-spoiler="gt_wing">GT RACE WING</button>
+                        <button class="pill-btn" data-spoiler="ducktail">DUCKTAIL LIP</button>
+                        <button class="pill-btn" data-spoiler="shark_fin">SHARK FIN</button>
+                        <button class="pill-btn" data-spoiler="clean">CLEAN (DELETE)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: PERFORMANCE TUNING -->
+            <div class="customize-tab-content" id="tab-tuning">
+                <div class="settings-list" style="max-width: 100%;">
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Engine ECU (Top Speed)</div>
+                            <div class="custom-subtext" id="tune-speed-label">Stock (165 km/h)</div>
+                        </div>
+                        <input type="range" id="tune-speed-slider" min="0.9" max="1.15" step="0.05" value="1.0">
+                    </div>
+
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Turbo Charger (Acceleration)</div>
+                            <div class="custom-subtext" id="tune-accel-label">Stage 1 (Normal)</div>
+                        </div>
+                        <input type="range" id="tune-accel-slider" min="0.9" max="1.2" step="0.05" value="1.0">
+                    </div>
+
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Suspension & Grip (Handling)</div>
+                            <div class="custom-subtext" id="tune-handling-label">Street Balance</div>
+                        </div>
+                        <input type="range" id="tune-handling-slider" min="0.85" max="1.25" step="0.05" value="1.0">
+                    </div>
+
+                    <div class="setting-item">
+                        <div>
+                            <div class="setting-label">Nitro Injector (Boost Force)</div>
+                            <div class="custom-subtext" id="tune-nitro-label">Dual Shot</div>
+                        </div>
+                        <input type="range" id="tune-nitro-slider" min="0.9" max="1.25" step="0.05" value="1.0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu-actions" style="flex-direction: row; max-width: 520px; margin-top: 15px;">
+                <button class="menu-btn primary-action" id="btn-custom-race" style="flex: 1;">🏁 SAVE & RACE</button>
+                <button class="menu-btn" id="btn-custom-back" style="flex: 1;">SAVE & BACK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Track Select Screen -->
+    <div class="screen-modal" id="screen-track-select">
+        <div class="menu-card" style="max-width: 820px;">
+            <h2 class="game-title" style="font-size: 34px;">CHOOSE RACING CIRCUIT</h2>
+
+            <div class="cards-grid">
+                <!-- Track 1: Neon City -->
+                <div class="select-card track-card selected" data-track="city">
+                    <div class="card-title">NEON CITY</div>
+                    <div class="card-subtitle">Downtown Skyscrapers</div>
+                    <p style="font-size: 11px; color: #a0aec0; margin-top: 8px;">Night city circuit featuring tight chicanes, illuminated billboards, and sweeping bridge straightaways.</p>
+                    <div style="font-size: 11px; color: var(--primary); font-weight: 700; margin-top: auto;">DIFFICULTY: MEDIUM</div>
+                </div>
+
+                <!-- Track 2: Alpine Pass -->
+                <div class="select-card track-card" data-track="alpine">
+                    <div class="card-title">ALPINE PASS</div>
+                    <div class="card-subtitle">Mountain Switchbacks</div>
+                    <p style="font-size: 11px; color: #a0aec0; margin-top: 8px;">Elevated mountain road with scenic pine valleys, steep elevation changes, and hairpins.</p>
+                    <div style="font-size: 11px; color: var(--accent); font-weight: 700; margin-top: auto;">DIFFICULTY: HARD</div>
+                </div>
+
+                <!-- Track 3: Desert Canyon -->
+                <div class="select-card track-card" data-track="desert">
+                    <div class="card-title">DESERT CANYON</div>
+                    <div class="card-subtitle">Sunset Tri-Oval</div>
+                    <p style="font-size: 11px; color: #a0aec0; margin-top: 8px;">Wide high-speed canyon course surrounded by towering sandstone mesas, built for blistering speeds.</p>
+                    <div style="font-size: 11px; color: var(--gold); font-weight: 700; margin-top: auto;">DIFFICULTY: EASY</div>
+                </div>
+            </div>
+
+            <button class="menu-btn" id="btn-track-back">CONFIRM & BACK</button>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div class="screen-modal" id="screen-settings">
+        <div class="menu-card">
+            <h2 class="game-title" style="font-size: 34px;">SETTINGS</h2>
+
+            <div class="settings-list">
+                <div class="setting-item">
+                    <span class="setting-label">Master Volume</span>
+                    <input type="range" id="setting-master-vol" min="0" max="1" step="0.05" value="0.8">
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">Synthwave Music</span>
+                    <input type="checkbox" id="setting-music-toggle" checked>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">Sound FX</span>
+                    <input type="checkbox" id="setting-sfx-toggle" checked>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">On-Screen Touch Controls</span>
+                    <input type="checkbox" id="setting-touch-toggle">
+                </div>
+            </div>
+
+            <button class="menu-btn" id="btn-settings-back">SAVE & BACK</button>
+        </div>
+    </div>
+
+    <!-- Pause Screen -->
+    <div class="screen-modal" id="screen-pause">
+        <div class="menu-card">
+            <h2 class="game-title" style="font-size: 38px;">RACE PAUSED</h2>
+
+            <div class="menu-actions">
+                <button class="menu-btn primary-action" id="btn-pause-resume">RESUME RACE</button>
+                <button class="menu-btn" id="btn-pause-restart">RESTART RACE</button>
+                <button class="menu-btn" id="btn-pause-menu">MAIN MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Finish Results Screen -->
+    <div class="screen-modal" id="screen-finish">
+        <div class="menu-card" style="max-width: 720px;">
+            <div id="results-title" class="results-header victory">VICTORY! 1ST PLACE</div>
+
+            <div class="results-table-container">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>POS</th>
+                            <th>DRIVER</th>
+                            <th>MACHINE</th>
+                            <th>TOTAL TIME</th>
+                            <th>BEST LAP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table-body">
+                        <!-- Filled dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="menu-actions" style="flex-direction: row; max-width: 440px;">
+                <button class="menu-btn primary-action" id="btn-finish-restart" style="flex: 1;">PLAY AGAIN</button>
+                <button class="menu-btn" id="btn-finish-menu" style="flex: 1;">MAIN MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         MOBILE TOUCH CONTROLS
+         ===================================================================== -->
+    <div id="touch-controls-container">
+        <!-- Steering Buttons (Left / Right) -->
+        <div class="touch-cluster-left">
+            <button class="touch-btn touch-btn-steer" id="touch-left">◀</button>
+            <button class="touch-btn touch-btn-steer" id="touch-right">▶</button>
+        </div>
+
+        <!-- Pedals, Drift & Nitro (Right) -->
+        <div class="touch-cluster-right">
+            <button class="touch-btn touch-btn-drift" id="touch-drift">DRIFT</button>
+            <button class="touch-btn touch-btn-nitro" id="touch-nitro">NITRO</button>
+            <div class="touch-pedal-group">
+                <button class="touch-btn touch-btn-gas" id="touch-gas">GAS</button>
+                <button class="touch-btn touch-btn-brake" id="touch-brake">BRAKE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script src="js/audio.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/car.js"></script>
+    <script src="js/track.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
